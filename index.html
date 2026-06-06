@@ -1,1 +1,128 @@
-# Anxiety-Exposure-Tracker
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anxiety Exposure & Avoidance Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background: #fafafa; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        input, textarea, button { padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 16px; }
+        button { cursor: pointer; color: white; border: none; font-weight: bold; }
+        .btn-exposure { background: #4CAF50; }
+        .btn-avoidance { background: #f44336; }
+        .item { padding: 12px; margin: 10px 0; border-radius: 4px; background: #f9f9f9; border-left: 4px solid #ccc; }
+        .exposure-item { border-left-color: #4CAF50; }
+        .avoidance-item { border-left-color: #f44336; background: #fff5f5; }
+        .delete-btn { background: none; color: #ff4d4d; border: none; padding: 0; font-size: 14px; float: right; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h1>Anxiety Exposure & Avoidance Tracker</h1>
+    <hr>
+
+    <div class="grid">
+        <div class="card">
+            <h2>➕ Log Exposure Session</h2>
+            <form id="exposureForm">
+                <input type="text" id="activity" placeholder="What was the exposure activity?" required>
+                <label>Anxiety Level (0-10): <span id="anxietyVal">5</span>
+                    <input type="range" id="anxietyLevel" min="0" max="10" value="5" style="width:100%">
+                </label>
+                <textarea id="exposureNotes" placeholder="Notes/Reflection..."></textarea>
+                <button type="submit" class="btn-exposure">Log Session</button>
+            </form>
+            <h3>Logged Exposures</h3>
+            <div id="exposureList"></div>
+        </div>
+
+        <div class="card">
+            <h2>➕ Log Avoidance Incident</h2>
+            <form id="avoidanceForm">
+                <input type="text" id="situation" placeholder="What was the situation?" required>
+                <textarea id="reason" placeholder="Why did you avoid it? (Triggers, thoughts...)" required></textarea>
+                <button type="submit" class="btn-avoidance">Log Avoidance</button>
+            </form>
+            <h3>Avoidance Logs</h3>
+            <div id="avoidanceList"></div>
+        </div>
+    </div>
+
+    <script>
+        // REPLACE THESE WITH YOUR ACTUAL SUPABASE KEYS
+        https://iwyxxtykbdxaglfbeimp.supabase.co";
+        eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eXh4dHlrYmR4YWdsZmJlaW1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MTc5MDksImV4cCI6MjA5NjI5MzkwOX0.v2uiys0o0GIYkTb3T3aZx1OA4ARvCbuQhiP1KHuIaxo";
+
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Update anxiety label slider dynamically
+        document.getElementById('anxietyLevel').addEventListener('input', (e) => {
+            document.getElementById('anxietyVal').innerText = e.target.value;
+        });
+
+        // Fetch and show Data
+        async function loadData() {
+            // Fetch Exposures
+            const { data: exposures } = await supabase.from('exposure_sessions').select('*').order('id', { ascending: false });
+            const expList = document.getElementById('exposureList');
+            expList.innerHTML = exposures?.map(item => `
+                <div class="item exposure-item">
+                    <button class="delete-btn" onclick="deleteItem('exposure_sessions', ${item.id})">Delete</button>
+                    <strong>${item.activity}</strong> (Anxiety: ${item.anxiety_level}/10)
+                    ${item.notes ? `<p style="margin:5px 0 0 0; font-size:14px; color:#555;"><em>${item.notes}</em></p>` : ''}
+                </div>
+            `).join('') || '<p>No exposures logged yet.</p>';
+
+            // Fetch Avoidances
+            const { data: avoidances } = await supabase.from('avoidance_logs').select('*').order('id', { ascending: false });
+            const avoidList = document.getElementById('avoidanceList');
+            avoidList.innerHTML = avoidances?.map(item => `
+                <div class="item avoidance-item">
+                    <button class="delete-btn" onclick="deleteItem('avoidance_logs', ${item.id})">Delete</button>
+                    <strong>Situation: ${item.situation}</strong>
+                    <p style="margin:5px 0 0 0; font-size:14px;"><strong>Reason:</strong> ${item.reason}</p>
+                </div>
+            `).join('') || '<p>No avoidance logged yet.</p>';
+        }
+
+        // Insert Exposure
+        document.getElementById('exposureForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await supabase.from('exposure_sessions').insert([{
+                activity: document.getElementById('activity').value,
+                anxiety_level: parseInt(document.getElementById('anxietyLevel').value),
+                notes: document.getElementById('exposureNotes').value
+            }]);
+            document.getElementById('exposureForm').reset();
+            document.getElementById('anxietyVal').innerText = '5';
+            loadData();
+        });
+
+        // Insert Avoidance
+        document.getElementById('avoidanceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await supabase.from('avoidance_logs').insert([{
+                situation: document.getElementById('situation').value,
+                reason: document.getElementById('reason').value
+            }]);
+            document.getElementById('avoidanceForm').reset();
+            loadData();
+        });
+
+        // Delete Item
+        async function deleteItem(table, id) {
+            if(confirm("Are you sure you want to delete this?")) {
+                await supabase.from(table).delete().eq('id', id);
+                loadData();
+            }
+        }
+
+        // Initial Load
+        loadData();
+    </script>
+</body>
+</html>
