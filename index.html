@@ -1,127 +1,333 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anxiety Exposure & Avoidance Tracker</title>
+    <title>MindForward | Anxiety & Exposure Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background: #fafafa; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-        input, textarea, button { padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 16px; }
-        button { cursor: pointer; color: white; border: none; font-weight: bold; }
-        .btn-exposure { background: #4CAF50; }
-        .btn-avoidance { background: #f44336; }
-        .item { padding: 12px; margin: 10px 0; border-radius: 4px; background: #f9f9f9; border-left: 4px solid #ccc; }
-        .exposure-item { border-left-color: #4CAF50; }
-        .avoidance-item { border-left-color: #f44336; background: #fff5f5; }
-        .delete-btn { background: none; color: #ff4d4d; border: none; padding: 0; font-size: 14px; float: right; cursor: pointer; }
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --accent-exposure: #10b981;
+            --accent-avoidance: #ef4444;
+            --btn-text: #ffffff;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --accent-exposure: #34d399;
+            --accent-avoidance: #f87171;
+        }
+
+        body { 
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background-color: var(--bg-primary); 
+            color: var(--text-main);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        h1, h2, h3 { margin: 0; }
+
+        /* Stats Dashboard Section */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .streak-color { color: var(--accent-exposure); }
+        .avoid-color { color: var(--accent-avoidance); }
+
+        /* Main Form Layout */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        .card { 
+            background: var(--bg-card); 
+            padding: 24px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        form { display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; margin-top: 15px; }
+        
+        input, textarea, select, button { 
+            padding: 12px; 
+            border-radius: 8px; 
+            border: 1px solid var(--border-color); 
+            font-size: 16px; 
+            background: var(--bg-card);
+            color: var(--text-main);
+        }
+
+        button { cursor: pointer; border: none; font-weight: bold; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+        
+        .btn-exposure { background: var(--accent-exposure); color: #000; }
+        .btn-avoidance { background: var(--accent-avoidance); color: #fff; }
+
+        /* Logged Items Styles */
+        .logs-container { max-height: 300px; overflow-y: auto; }
+        .item { 
+            padding: 14px; 
+            margin: 10px 0; 
+            border-radius: 8px; 
+            background: var(--bg-primary); 
+            border-left: 4px solid var(--border-color); 
+            position: relative;
+        }
+        
+        .exposure-item { border-left-color: var(--accent-exposure); }
+        .avoidance-item { border-left-color: var(--accent-avoidance); }
+        
+        .delete-btn { 
+            background: none; 
+            color: var(--accent-avoidance); 
+            padding: 0; 
+            font-size: 14px; 
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            cursor: pointer; 
+        }
+
+        .notes-text { margin: 5px 0 0 0; font-size: 14px; color: var(--text-muted); font-style: italic; }
+
+        /* Settings Card */
+        .settings-card { grid-column: 1 / -1; margin-top: 20px; }
+        .settings-row { display: flex; align-items: center; gap: 15px; }
     </style>
 </head>
 <body>
 
-    <h1>Anxiety Exposure & Avoidance Tracker</h1>
-    <hr>
+    <header>
+        <div>
+            <h1>🧠 MindForward</h1>
+            <p style="color: var(--text-muted); margin: 5px 0 0 0;">Anxiety Exposure & Behavioral Tracker</p>
+        </div>
+    </header>
+
+    <div class="stats-container">
+        <div class="stat-card">
+            <div style="color: var(--text-muted);">🔥 Exposure Streak</div>
+            <div id="exposureStreakVal" class="stat-number streak-color">0 days</div>
+        </div>
+        <div class="stat-card">
+            <div style="color: var(--text-muted);">⚠️ Total Avoidances</div>
+            <div id="avoidanceCountVal" class="stat-number avoid-color">0</div>
+        </div>
+    </div>
 
     <div class="grid">
         <div class="card">
             <h2>➕ Log Exposure Session</h2>
             <form id="exposureForm">
                 <input type="text" id="activity" placeholder="What was the exposure activity?" required>
-                <label>Anxiety Level (0-10): <span id="anxietyVal">5</span>
-                    <input type="range" id="anxietyLevel" min="0" max="10" value="5" style="width:100%">
+                <label style="font-weight: 500;">Anxiety Level (0-10): <span id="anxietyVal" class="streak-color">5</span>
+                    <input type="range" id="anxietyLevel" min="0" max="10" value="5" style="width:100%; margin-top: 8px;">
                 </label>
-                <textarea id="exposureNotes" placeholder="Notes/Reflection..."></textarea>
-                <button type="submit" class="btn-exposure">Log Session</button>
+                <textarea id="exposureNotes" placeholder="Notes or post-exposure reflection..."></textarea>
+                <button type="submit" class="btn-exposure">Log Session & Keep Streak</button>
             </form>
             <h3>Logged Exposures</h3>
-            <div id="exposureList"></div>
+            <div id="exposureList" class="logs-container"></div>
         </div>
 
         <div class="card">
             <h2>➕ Log Avoidance Incident</h2>
             <form id="avoidanceForm">
                 <input type="text" id="situation" placeholder="What was the situation?" required>
-                <textarea id="reason" placeholder="Why did you avoid it? (Triggers, thoughts...)" required></textarea>
+                <textarea id="reason" placeholder="Why did you avoid it? (Thoughts, triggers...)" required></textarea>
                 <button type="submit" class="btn-avoidance">Log Avoidance</button>
             </form>
             <h3>Avoidance Logs</h3>
-            <div id="avoidanceList"></div>
+            <div id="avoidanceList" class="logs-container"></div>
+        </div>
+
+        <div class="card settings-card">
+            <h2>⚙️ App Settings</h2>
+            <div class="settings-row" style="margin-top: 15px;">
+                <label for="themeSelect">Interface Theme:</label>
+                <select id="themeSelect" onchange="changeTheme(this.value)">
+                    <option value="light">☀️ Light Mode</option>
+                    <option value="dark">🌙 Dark Mode</option>
+                </select>
+                <button onclick="resetStats()" style="background-color: var(--border-color); color: var(--text-main); font-size: 14px;">Reset Streak Data</button>
+            </div>
         </div>
     </div>
 
     <script>
         // REPLACE THESE WITH YOUR ACTUAL SUPABASE KEYS
-        https://iwyxxtykbdxaglfbeimp.supabase.co";
-        eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eXh4dHlrYmR4YWdsZmJlaW1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MTc5MDksImV4cCI6MjA5NjI5MzkwOX0.v2uiys0o0GIYkTb3T3aZx1OA4ARvCbuQhiP1KHuIaxo";
+        const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+        const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY";
 
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Update anxiety label slider dynamically
+        // Track local profile stats state
+        let currentProfile = { exposure_streak: 0, avoidance_count: 0, theme: 'light', last_exposure_date: null };
+
+        // Dynamic slider element text
         document.getElementById('anxietyLevel').addEventListener('input', (e) => {
             document.getElementById('anxietyVal').innerText = e.target.value;
         });
 
-        // Fetch and show Data
+        // Initialize App & Fetch and show Data
         async function loadData() {
-            // Fetch Exposures
+            // 1. Fetch user setting preferences & metrics profile row
+            const { data: profiles } = await supabase.from('profiles').select('*').eq('id', 1).maybeSingle();
+            if (profiles) {
+                currentProfile = profiles;
+                document.getElementById('exposureStreakVal').innerText = `${currentProfile.exposure_streak} days`;
+                document.getElementById('avoidanceCountVal').innerText = currentProfile.avoidance_count;
+                document.getElementById('themeSelect').value = currentProfile.theme;
+                document.documentElement.setAttribute('data-theme', currentProfile.theme);
+            }
+
+            // 2. Fetch Exposures
             const { data: exposures } = await supabase.from('exposure_sessions').select('*').order('id', { ascending: false });
             const expList = document.getElementById('exposureList');
             expList.innerHTML = exposures?.map(item => `
                 <div class="item exposure-item">
                     <button class="delete-btn" onclick="deleteItem('exposure_sessions', ${item.id})">Delete</button>
                     <strong>${item.activity}</strong> (Anxiety: ${item.anxiety_level}/10)
-                    ${item.notes ? `<p style="margin:5px 0 0 0; font-size:14px; color:#555;"><em>${item.notes}</em></p>` : ''}
+                    ${item.notes ? `<p class="notes-text">${item.notes}</p>` : ''}
                 </div>
-            `).join('') || '<p>No exposures logged yet.</p>';
+            `).join('') || '<p style="color: var(--text-muted);">No exposures logged yet.</p>';
 
-            // Fetch Avoidances
+            // 3. Fetch Avoidances
             const { data: avoidances } = await supabase.from('avoidance_logs').select('*').order('id', { ascending: false });
             const avoidList = document.getElementById('avoidanceList');
             avoidList.innerHTML = avoidances?.map(item => `
                 <div class="item avoidance-item">
                     <button class="delete-btn" onclick="deleteItem('avoidance_logs', ${item.id})">Delete</button>
                     <strong>Situation: ${item.situation}</strong>
-                    <p style="margin:5px 0 0 0; font-size:14px;"><strong>Reason:</strong> ${item.reason}</p>
+                    <p class="notes-text" style="color: var(--text-main);"><strong>Reason:</strong> ${item.reason}</p>
                 </div>
-            `).join('') || '<p>No avoidance logged yet.</p>';
+            `).join('') || '<p style="color: var(--text-muted);">No avoidance logged yet.</p>';
         }
 
-        // Insert Exposure
+        // Change App Theme Structure
+        async function changeTheme(themeValue) {
+            document.documentElement.setAttribute('data-theme', themeValue);
+            await supabase.from('profiles').update({ theme: themeValue }).eq('id', 1);
+        }
+
+        // Insert Exposure Logic + Evaluate Streak Rules
         document.getElementById('exposureForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            // Insert log item data row
             await supabase.from('exposure_sessions').insert([{
                 activity: document.getElementById('activity').value,
                 anxiety_level: parseInt(document.getElementById('anxietyLevel').value),
                 notes: document.getElementById('exposureNotes').value
             }]);
+
+            // Calculate streak adjustments
+            let newStreak = currentProfile.exposure_streak;
+            if (currentProfile.last_exposure_date !== todayStr) {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+                if (currentProfile.last_exposure_date === yesterdayStr || !currentProfile.last_exposure_date) {
+                    newStreak += 1;
+                } else {
+                    newStreak = 1; // reset broken sequence back to 1
+                }
+            }
+
+            // Update parameters in DB profiles tracking metrics
+            await supabase.from('profiles').update({ 
+                exposure_streak: newStreak, 
+                last_exposure_date: todayStr 
+            }).eq('id', 1);
+
             document.getElementById('exposureForm').reset();
             document.getElementById('anxietyVal').innerText = '5';
             loadData();
         });
 
-        // Insert Avoidance
+        // Insert Avoidance + Count Adjustments
         document.getElementById('avoidanceForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             await supabase.from('avoidance_logs').insert([{
                 situation: document.getElementById('situation').value,
                 reason: document.getElementById('reason').value
             }]);
+
+            // Increment profile tracking metrics
+            await supabase.from('profiles').update({ 
+                avoidance_count: currentProfile.avoidance_count + 1 
+            }).eq('id', 1);
+
             document.getElementById('avoidanceForm').reset();
             loadData();
         });
 
-        // Delete Item
+        // Delete Log Entry Item
         async function deleteItem(table, id) {
-            if(confirm("Are you sure you want to delete this?")) {
+            if(confirm("Are you sure you want to delete this log?")) {
                 await supabase.from(table).delete().eq('id', id);
                 loadData();
             }
         }
 
-        // Initial Load
+        // Reset Tracker metrics values back to baseline
+        async function resetStats() {
+            if(confirm("Are you sure you want to reset your streak metrics?")) {
+                await supabase.from('profiles').update({ 
+                    exposure_streak: 0, 
+                    avoidance_count: 0, 
+                    last_exposure_date: null 
+                }).eq('id', 1);
+                loadData();
+            }
+        }
+
+        // Initial Load Run Command
         loadData();
     </script>
 </body>
